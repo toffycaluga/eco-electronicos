@@ -1,115 +1,161 @@
-# Contrato de Datos — v1
-
-**Ámbito:** Plataforma de alquiler de automóviles  
-**Responsable:** Persona A (Diseño conceptual)  
-**Estado:** v1 publicado (borrador estable). Cambios posteriores se anunciarán como *diff*.
 
 ---
 
-## 1. Nomenclatura oficial
+### 2) `contratos/contrato_datos_v1.md`
 
-- Entidades (conceptual): **Pascal Case** singular (Cliente, Vehiculo, Alquiler, Pago).
-- Atributos (canónicos): **snake_case**.
-- Claves:
-  - Primaria: `id_<entidad>` (p. ej., `id_cliente`).
-  - Foránea: `id_<entidad_referida>` (p. ej., `id_vehiculo`).
-- Fechas: `fecha_inicio`, `fecha_fin`, `fecha_pago`.
-- Dinero: `precio_dia`, `monto`.
-- Unicidad: `email` único por cliente.
+```md
+# Contrato de Datos — ECO-ELECTRÓNICOS (v1.0)
 
-> Nota: Persona B usará los **mismos nombres canónicos** en SQL (MySQL 8).
+**Responsable:** Persona A  
+**Ámbito:** Modelo relacional para gestión de clientes, solicitudes, asignaciones y reciclaje.  
+**Nota de proceso:** Cualquier cambio posterior **debe** reflejarse aquí y anunciar diff.
 
 ---
 
-## 2. Entidades y atributos (canónicos)
+## 1. Convenciones de nombres
+- Tablas: `snake_case` en **plural** (ej. `solicitudes_retiro`, `detalles_reciclaje`).
+- PK: `id_<entidad>` (`BIGINT UNSIGNED AUTO_INCREMENT`).
+- FK: `<entidad>_id` usando mismo tipo que la PK referida.
+- Timestamps: `created_at`, `updated_at` (`DATETIME`).
+- Booleanos: `BOOLEAN` (`0`/`1`).
+- Dominios controlados: `ENUM` para estados, categorías, franjas y tipos.
 
-### 2.1 Cliente
-- **PK**: `id_cliente`
-- `nombre` — texto corto; nombre completo visible.
-- `telefono` — texto; formato libre (normalización futura).
-- `email` — texto; **único** (regla de negocio).
-- `direccion` — texto.
+## 2. Dominios y enumeraciones (canónicos)
+- `cliente.tipo_doc`: `RUT`, `DNI`, `PASAPORTE`
+- `solicitudes_retiro.franja_horaria` y `asignaciones_retiro.franja_horaria`:
+  - `AM(08-12)`, `PM(12-16)`, `NOCHE(16-20)`
+- `solicitudes_retiro.estado`:
+  - `pendiente`, `programada`, `en_ruta`, `completada`, `cancelada`
+- `asignaciones_retiro.estado`:
+  - `asignada`, `en_ruta`, `finalizada`, `cancelada`
+- `tipos_articulo.categoria`:
+  - `Computo`, `Telefonia`, `AudioVideo`, `Electrodomestico`, `Bateria`, `Otro`
+- `tipos_articulo.unidad_medida`:
+  - `kg`, `unidad`
+- `vehiculos.tipo`:
+  - `Camioneta`, `Camión`, `Furgón`, `Moto`
+- `conductores.licencia_tipo`:
+  - `A1`, `A2`, `A3`, `B`, `C`, `D`, `E`
+- `detalles_reciclaje.estado`:
+  - `reportado`, `recibido`, `rechazado`
 
-### 2.2 Vehiculo
-- **PK**: `id_vehiculo`
-- `marca` — texto.
-- `modelo` — texto.
-- `anio` — entero (año calendario).
-- `precio_dia` — decimal; **no negativo**.
+> Si estos dominios cambian con frecuencia o requieren multi-idioma, migrar a **tablas catálogo** con FK.
 
-### 2.3 Alquiler
-- **PK**: `id_alquiler`
-- **FK**: `id_cliente` → Cliente
-- **FK**: `id_vehiculo` → Vehiculo
-- `fecha_inicio` — fecha.
-- `fecha_fin` — fecha; **>= `fecha_inicio`**.
-- `estado_alquiler` *(futuro_uso, opcional en v1)*: `{reservado, en_curso, finalizado, cancelado}`.
+## 3. Esquema canónico (tablas y claves)
 
-### 2.4 Pago
-- **PK**: `id_pago`
-- **FK**: `id_alquiler` → Alquiler
-- `monto` — decimal; **no negativo**.
-- `fecha_pago` — fecha.
-- `metodo_pago` *(futuro_uso)*: `{efectivo, tarjeta, transferencia}`.
+### 3.1 `clientes`
+- **PK:** `id_cliente`
+- **Únicos:** `nro_doc`, `email`
+- **Campos:**
+  - `tipo_doc` (ENUM) **NOT NULL**
+  - `nro_doc` (VARCHAR(20)) **NOT NULL**
+  - `nombre` (VARCHAR(120)) **NOT NULL**
+  - `telefono` (VARCHAR(20)) **NOT NULL**
+  - `email` (VARCHAR(120)) **NOT NULL**
+  - `direccion` (VARCHAR(200)) **NOT NULL**
+  - `ciudad` (VARCHAR(100)) **NOT NULL**
+  - `comuna` (VARCHAR(100)) NULL
+  - `created_at`, `updated_at`
+- **Relación:** CLIENTE 1—N SOLICITUD_RETIRO
 
----
+### 3.2 `solicitudes_retiro`
+- **PK:** `id_solicitud`
+- **FK:** `cliente_id` → `clientes.id_cliente`
+- **Campos:**
+  - `fecha_solicitada` (DATE) **NOT NULL**
+  - `franja_horaria` (ENUM) **NOT NULL**
+  - `direccion_retiro` (VARCHAR(200)) **NOT NULL**
+  - `ciudad` (VARCHAR(100)) **NOT NULL**
+  - `estado` (ENUM) **NOT NULL** default `pendiente`
+  - `observaciones` (TEXT) NULL
+  - `created_at` (DATETIME) **NOT NULL**
+- **Índices:** `idx_sol_estado(estado)`, `idx_sol_fecha(fecha_solicitada)`
+- **Relaciones:** 1—0..1 ASIGNACION_RETIRO; 1—N DETALLE_RECICLAJE
 
-## 3. Relaciones y cardinalidades
+### 3.3 `asignaciones_retiro`
+- **PK:** `id_asignacion`
+- **FK:** `solicitud_id` → `solicitudes_retiro.id_solicitud` (**UNIQUE**)
+- **FK:** `vehiculo_id` → `vehiculos.id_vehiculo`
+- **FK:** `conductor_id` → `conductores.id_conductor`
+- **Campos:**
+  - `fecha_programada` (DATE) **NOT NULL**
+  - `franja_horaria` (ENUM) **NOT NULL**
+  - `estado` (ENUM) **NOT NULL** default `asignada`
+  - `hora_inicio_estimada` (TIME) NULL
+  - `hora_fin_estimada` (TIME) NULL
+- **Restricciones anti-solape:**
+  - **UNIQUE**(`vehiculo_id`, `fecha_programada`, `franja_horaria`)
+  - **UNIQUE**(`conductor_id`, `fecha_programada`, `franja_horaria`)
 
-- **Cliente 1 — N Alquiler**: un cliente puede tener múltiples alquileres; un alquiler pertenece a un único cliente.
-- **Vehiculo 1 — N Alquiler**: un vehículo puede participar en múltiples alquileres (no superpuestos temporalmente); un alquiler corresponde a un único vehículo.
-- **Alquiler 1 — N Pago**: un alquiler puede tener **0..N** pagos; todos los pagos se asocian a un único alquiler.
+### 3.4 `vehiculos`
+- **PK:** `id_vehiculo`
+- **Únicos:** `patente`
+- **Campos:**
+  - `patente` (VARCHAR(12)) **NOT NULL**
+  - `tipo` (ENUM) **NOT NULL**
+  - `capacidad_kg` (DECIMAL(10,2)) **NOT NULL** (>0)
+  - `activo` (BOOLEAN) **NOT NULL** default `1`
+  - `notas` (TEXT) NULL
 
----
+### 3.5 `conductores`
+- **PK:** `id_conductor`
+- **Únicos:** `rut_dni`, `email` (NULLable)
+- **Campos:**
+  - `nombre` (VARCHAR(120)) **NOT NULL**
+  - `rut_dni` (VARCHAR(20)) **NOT NULL**
+  - `telefono` (VARCHAR(20)) **NOT NULL**
+  - `licencia_tipo` (ENUM) **NOT NULL**
+  - `email` (VARCHAR(120)) NULL
+  - `activo` (BOOLEAN) **NOT NULL** default `1`
 
-## 4. Reglas de negocio (vinculantes)
+### 3.6 `tipos_articulo`
+- **PK:** `id_tipo`
+- **Únicos:** `nombre`
+- **Campos:**
+  - `nombre` (VARCHAR(80)) **NOT NULL**
+  - `categoria` (ENUM) **NOT NULL**
+  - `requiere_manejo_especial` (BOOLEAN) **NOT NULL** default `0`
+  - `unidad_medida` (ENUM) **NOT NULL** default `kg`
+  - `valor_estimado_por_kg` (DECIMAL(10,2)) NULL
+  - `comentarios` (TEXT) NULL
 
-1. **Fechas válidas:** `fecha_fin >= fecha_inicio`.
-2. **No negativos:** `precio_dia >= 0`, `monto >= 0`.
-3. **Email único:** no pueden existir dos clientes con el mismo `email`.
-4. **Días de arriendo (definición canónica):**  
-   `dias_alquilados = fecha_fin - fecha_inicio + 1` (cómputo **inclusivo**).
-5. **Alquiler activo (hoy):**  
-   `activo_si = (CURRENT_DATE BETWEEN fecha_inicio AND fecha_fin)`.
-6. **“Alquilado en un mes dado” (solapamiento temporal):**  
-   Un alquiler cuenta para un mes **si se superpone** con la ventana `[primer_dia_mes, primer_dia_mes_siguiente)`.
-7. **Disponibilidad de vehículo en fecha X:**  
-   Disponible si **no existe** alquiler tal que `X BETWEEN fecha_inicio AND fecha_fin`.
+### 3.7 `detalles_reciclaje`
+- **PK:** `id_detalle`
+- **FK:** `solicitud_id` → `solicitudes_retiro.id_solicitud` (DELETE CASCADE)
+- **FK:** `tipo_articulo_id` → `tipos_articulo.id_tipo`
+- **Únicos:** **UNIQUE**(`solicitud_id`, `tipo_articulo_id`)
+- **Campos:**
+  - `cantidad` (INT) **NOT NULL** ≥ 1
+  - `peso_kg` (DECIMAL(10,2)) NULL ≥ 0
+  - `estado` (ENUM) **NOT NULL** default `reportado`
+  - `observaciones` (TEXT) NULL
 
----
+## 4. Reglas de negocio clave
+1. Una solicitud tiene **a lo sumo una** asignación: `UNIQUE(solicitud_id)` en `asignaciones_retiro`.
+2. **No hay doble booking** por franja: unicidad por (`vehiculo_id`, `fecha_programada`, `franja_horaria`) y por (`conductor_id`, `fecha_programada`, `franja_horaria`).
+3. En `detalles_reciclaje`, cada (`solicitud_id`, `tipo_articulo_id`) es único para evitar duplicados de línea (ajustable según negocio).
+4. `clientes.email`, `clientes.nro_doc`, `vehiculos.patente`, `conductores.rut_dni` son **únicos**.
 
-## 5. Enumeraciones y dominios (futuro_uso)
+## 5. Ciclos de vida (máquinas de estado)
+**Solicitud:**  
+`pendiente` → (`programada` | `cancelada`) → (`en_ruta` | `cancelada`) → `completada`  
 
-- `estado_alquiler`: `{reservado, en_curso, finalizado, cancelado}`  
-  - Transiciones válidas: `reservado → en_curso → finalizado`; en cualquier momento `→ cancelado` (si procede).
-- `metodo_pago`: `{efectivo, tarjeta, transferencia}`.
+**Asignación:**  
+`asignada` → `en_ruta` → `finalizada` (o `cancelada` en cualquier etapa previa)  
 
-*(Persona B puede diferir su implementación; mantener en contrato para consistencia semántica.)*
+**Detalle:**  
+`reportado` → (`recibido` | `rechazado`)
 
----
+## 6. Índices sugeridos
+- `solicitudes_retiro(estado)`, `solicitudes_retiro(fecha_solicitada)`
+- `asignaciones_retiro(fecha_programada, franja_horaria)`
+- `detalles_reciclaje(solicitud_id)`
 
-## 6. Vistas/derivados (definiciones semánticas, no físicas)
+## 7. Normalización
+- Esquema en **3FN**. Dominios controlados por `ENUM`; `tipos_articulo` separado como catálogo.
+- Sin dependencias parciales ni transitivas en tablas transaccionales.
+- No se almacenan agregados derivables (ej.: total de peso por solicitud).
 
-- **Total a pagar por alquiler (sin descuentos/recargos):**  
-  `total_arriendo = dias_alquilados * precio_dia`.
-- **Total pagado por cliente:** suma de `monto` de todos los pagos de sus alquileres.
-- **Promedio de pago por cliente:** promedio de `monto` (0 si no hay pagos).
-
----
-
-## 7. Gestión de cambios (diffs)
-
-- Cualquier ajuste (nombre, atributo, estado) se publicará como **changelog** al final de este documento:
-  - `YYYY-MM-DD — cambio — motivo — impacto en B/C`.
-
----
-
-## 8. Apéndice — Tabla de nombres canónicos (resumen)
-
-| Tipo       | Nombre | Atributos clave |
-|------------|--------|------------------|
-| Entidad    | Cliente | id_cliente, nombre, telefono, email, direccion |
-| Entidad    | Vehiculo | id_vehiculo, marca, modelo, anio, precio_dia |
-| Entidad    | Alquiler | id_alquiler, id_cliente, id_vehiculo, fecha_inicio, fecha_fin, (estado_alquiler) |
-| Entidad    | Pago | id_pago, id_alquiler, monto, fecha_pago, (metodo_pago) |
-
+## 8. Roadmap de cambios
+- **v1.0:** Borrador estable para trabajo de B y C.
+- **v1.1 (propuesto):** Localidades normalizadas (ciudad/comuna/region) y migrar ENUMs a catálogos si requieren administración dinámica.
