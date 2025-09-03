@@ -1,0 +1,30 @@
+Persona A — Diseño Conceptual (E-R) + Contrato de Datos
+Responsable de: entidades, atributos, cardinalidades y nomenclatura oficial.
+Entregables:
+01_ER/Diagrama_ER.pdf (o .png)
+contratos/contrato_datos_v1.md (nombres canónicos, estados, enumeraciones)
+Mini-glosario (definiciones de “solicitud”, “asignación”, etc.)
+Para no bloquear: publica rápido un borrador de ER + el contrato de datos v1 (listado abajo). Persona B y C trabajan con eso; si luego cambias algo, solo tocas el contrato y anuncias dif.
+
+Persona B — Modelo Relacional + DDL + Constraints
+Responsable de: transformar el ER a tablas, claves, tipos y restricciones.
+Entregables:
+02_ModeloRelacional/Modelo_Relacional.pdf
+02_ModeloRelacional/schema.sql (CREATE TABLE + FK + CHECK + UNIQUE)
+02_ModeloRelacional/seed.sql (datos de ejemplo mínimos)
+Para no bloquear: parte del contrato de datos v1 (abajo) y del esqueleto DDL que ya tenemos. Si Persona A ajusta algo menor (un nombre), lo reflejas al final.
+
+Persona C — Normalización (→3FN) + Diccionario de Datos
+Responsable de: justificar 1FN/2FN/3FN y documentar cada columna.
+Entregables:
+03_Normalizacion_Diccionario/Normalizacion_3FN.pdf
+03_Normalizacion_Diccionario/Diccionario_Datos.pdf (o .docx)
+Para no bloquear: puedes comenzar con el borrador de tablas de Persona B (o el esquema que ya te pasamos) y dejar marcado “pendiente de nombre final“ donde corresponda.
+
+Persona D — Demo HTML + Mock de Datos + Empaquetado
+Responsable de: el HTML de demostración y la coherencia visual/semántica con el contrato.
+Entregables:
+04_HTML/EcoElectronicos_GrupoX.html
+04_HTML/mock.json (si quieres simular datos)
+Entrega/EcoElectronicos_GrupoX.zip (final con todos los PDFs/HTML)
+Para no bloquear: usa los nombres canónicos del contrato y el seed.sql/mock.json como fuente de verdad para la tabla simulada.
