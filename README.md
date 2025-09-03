@@ -69,6 +69,8 @@ Define términos clave como **Cliente**, **Solicitud de Retiro**, **Asignación 
 - [x] Contrato de Datos v1 redactado.  
 - [x] Mini-glosario entregado.  
 
+## ✅ Estado de entrega (Persona B)
+- [x] Transformación al modelo relacional (SQL DDL)
 
 ## Integrantes 
 
