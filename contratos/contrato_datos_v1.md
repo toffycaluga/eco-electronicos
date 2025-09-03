@@ -1,9 +1,4 @@
 
----
-
-### 2) `contratos/contrato_datos_v1.md`
-
-```md
 # Contrato de Datos — ECO-ELECTRÓNICOS (v1.0)
 
 **Responsable:** Persona A  
