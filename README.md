@@ -4,3 +4,9 @@
 
 ---
 
+## Integrantes 
+
+- **Moises Ortega**
+- **Tatu Vergara**
+- **Abraham Lillo**
+- **Leonardo V**
